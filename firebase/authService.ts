@@ -5,10 +5,12 @@ import {
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
+  signInWithPopup,
+  GoogleAuthProvider,
 } from "firebase/auth";
 
-// Sign-Up
-export const signUpWithEmailandPassword = async (
+// Sign-Up with Email & password
+export const signUpWithEmailAndPassword = async (
   email: string,
   password: string
 ): Promise<User> => {
@@ -20,8 +22,8 @@ export const signUpWithEmailandPassword = async (
   return userCredential.user;
 };
 
-// Login
-export const loginWithEmailandPassword = async (
+// Login with Email & Password
+export const loginWithEmailAndPassword = async (
   email: string,
   password: string
 ): Promise<User> => {
@@ -30,6 +32,13 @@ export const loginWithEmailandPassword = async (
     email,
     password
   );
+  return userCredential.user;
+};
+
+// Login with Google Popup
+export const loginWithGoogle = async (): Promise<User> => {
+  const provider = new GoogleAuthProvider();
+  const userCredential = await signInWithPopup(auth, provider);
   return userCredential.user;
 };
 
