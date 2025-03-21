@@ -1,8 +1,8 @@
 import { useAuth } from "@/context/auth-context";
 import {
-  loginWithEmailandPassword,
+  loginWithEmailAndPassword,
   logout,
-  signUpWithEmailandPassword,
+  signUpWithEmailAndPassword,
 } from "@/firebase/authService";
 import { useState } from "react";
 
@@ -14,7 +14,7 @@ const Login = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await loginWithEmailandPassword(email, password);
+      await loginWithEmailAndPassword(email, password);
     } catch (error) {
       console.error("Login failed:", (error as Error).message);
     }
@@ -54,7 +54,7 @@ const Signup = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await signUpWithEmailandPassword(email, password);
+      await signUpWithEmailAndPassword(email, password);
     } catch (error) {
       console.error("Signup failed:", (error as Error).message);
     }
