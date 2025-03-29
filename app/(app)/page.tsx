@@ -1,6 +1,5 @@
 "use client";
 
-import { AddTaskForm } from "@/components/tasks/add-task-form";
 import { TaskForm } from "@/components/tasks/task-form";
 import { Tasks } from "@/components/tasks/tasks";
 import { Button } from "@/components/ui/button";
@@ -22,12 +21,12 @@ export default function Page() {
           {today}
         </h1>
 
-        <h1 className="text-3xl md:text-4xl text-neutral-900 dark:text-neutral-100 font-bold mt-2">
-          Welcome back, {user?.displayName}
+        <h1 className="text-2xl md:text-3xl text-neutral-900 dark:text-neutral-100 font-bold mt-2">
+          Hello, {user?.displayName}
         </h1>
       </div>
 
-      <div className="flex gap-4 w-full mt-10">
+      <div className="flex gap-4 w-full mt-10 ">
         <div className="w-[320px] max-h-[calc(100vh-300px)] h-full overflow-hidden shrink-0 hidden md:flex flex-col gap-4">
           {/* <AddTaskForm onAddTask={() => {}} /> */}
 
@@ -56,7 +55,7 @@ export default function Page() {
               <CardTitle>Add New Task</CardTitle>
             </CardHeader>
             <CardContent className="w-full h-full overflow-hidden overflow-y-auto">
-              <TaskForm className="h-full w-full" />
+              <TaskForm  />
             </CardContent>
           </Card>
         </div>

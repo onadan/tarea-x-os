@@ -1,4 +1,4 @@
-import { ISOStringFormat } from "date-fns";
+import { Timestamp } from "firebase/firestore";
 
 export interface SubTask {
   id: string;
@@ -12,5 +12,7 @@ export interface Task {
   date: Date;
   completed: boolean;
   subtasks: SubTask[];
+  createdAt: Timestamp;
+  userId?: string;
   order?: number; // Add optional order property
 }

@@ -43,7 +43,7 @@ export function SubtaskList({ subtasks, onChange }: SubtaskListProps) {
   const handleSubtaskChange = (id: string, value: string) => {
     onChange(
       subtasks.map((subtask) =>
-        subtask.id === id ? { ...subtask, name: value } : subtask
+        subtask.id === id ? { ...subtask, text: value } : subtask
       )
     );
   };
@@ -51,8 +51,6 @@ export function SubtaskList({ subtasks, onChange }: SubtaskListProps) {
   const removeSubtask = (id: string) => {
     onChange(subtasks.filter((subtask) => subtask.id !== id));
   };
-
-  if (subtasks.length === 0) return null;
 
   return (
     <DndContext
@@ -63,15 +61,17 @@ export function SubtaskList({ subtasks, onChange }: SubtaskListProps) {
       <SortableContext items={subtasks} strategy={verticalListSortingStrategy}>
         <div className="grid gap-2">
           <Label htmlFor="subtasks">Subtasks</Label>
-          {subtasks.map((subtask, index) => (
-            <SortableSubtask
-              key={subtask.id}
-              index={index}
-              subtask={subtask}
-              handleSubtaskChange={handleSubtaskChange}
-              removeSubtask={removeSubtask}
-            />
-          ))}
+          <div className="space-y-2 w-full">
+            {subtasks.map((subtask, index) => (
+              <SortableSubtask
+                key={subtask.id}
+                index={index}
+                subtask={subtask}
+                handleSubtaskChange={handleSubtaskChange}
+                removeSubtask={removeSubtask}
+              />
+            ))}
+          </div>
         </div>
       </SortableContext>
     </DndContext>

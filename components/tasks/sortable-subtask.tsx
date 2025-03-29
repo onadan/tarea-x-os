@@ -22,10 +22,19 @@ export function SortableSubtask({
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: subtask.id });
 
+  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const element = e.target;
+    // Reset height to auto to properly calculate new height
+    element.style.height = 'auto';
+    // Set new height based on scrollHeight
+    element.style.height = `${element.scrollHeight}px`;
+    handleSubtaskChange(subtask.id, e.target.value);
+  };
+
   return (
     <div
       ref={setNodeRef}
-      className="flex gap-2 items-center"
+      className="flex gap-2 items-start w-full overflow-hidden "
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
@@ -35,7 +44,7 @@ export function SortableSubtask({
         type="button"
         {...attributes}
         {...listeners}
-        className="shrink-0 cursor-grab select-none"
+        className="shrink-0 cursor-grab select-none mt-2"
       >
         <GripVertical className="size-4" />
       </button>
@@ -43,15 +52,20 @@ export function SortableSubtask({
       <Textarea
         minLength={1}
         placeholder={`Subtask ${index + 1}`}
-        className="flex-1 border p-2 rounded resize-none min-h-10"
+        className="border p-2 rounded resize-none flex-1 w-full min-h-[40px]"
         value={subtask.text}
-        onChange={(e) => handleSubtaskChange(subtask.id, e.target.value)}
+        onChange={handleInput}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+          }
+        }}
       />
 
       <button
         type="button"
         onClick={() => removeSubtask(subtask.id)}
-        className="cursor-pointer select-none"
+        className="cursor-pointer select-none mt-2"
       >
         <Minus size={16} />
       </button>

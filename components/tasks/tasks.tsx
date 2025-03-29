@@ -2,7 +2,12 @@
 
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Grid, List } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getUserTasks, deleteTask, updateTask as updateTaskService } from "@/services/taskService";
+import { useAuth } from "@/providers/auth-context";
+import { toast } from "sonner";
+import { onSnapshot, query, collection, where } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 import {
   DndContext,
@@ -25,21 +30,86 @@ import { TaskList } from "./task-list";
 import { TaskGrid } from "./task-grid";
 import { TaskItem } from "./task-item";
 import { Task } from "@/types/task";
-import { AddTaskDrawerDialog } from "./add-task-modal";
 
 export function Tasks() {
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
 
-  const handleDeleteTask = (taskId: string) => {
-    setTasks(tasks.filter((task) => task.id !== taskId));
+  useEffect(() => {
+    if (!user) return;
+
+    const tasksRef = collection(db, "tasks");
+    const q = query(tasksRef, where("userId", "==", user.uid));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedTasks = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Task[];
+      
+      setTasks(fetchedTasks.sort((a, b) => (a.order || 0) - (b.order || 0)));
+      setIsLoading(false);
+    }, (error) => {
+      console.error("Error fetching tasks:", error);
+      toast.error("Failed to load tasks");
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      await deleteTask(taskId);
+      setTasks(tasks.filter((task) => task.id !== taskId));
+      toast.success("Task deleted successfully");
+    } catch (error) {
+      toast.error("Failed to delete task");
+    }
   };
 
-  const handleUpdateTask = (updatedTask: Task) => {
-    setTasks(
-      tasks.map((task) => (task.id === updatedTask.id ? updatedTask : task))
-    );
+  const handleUpdateTask = async (updatedTask: Task) => {
+    try {
+      await updateTaskService(updatedTask.id, updatedTask);
+      setTasks(
+        tasks.map((task) => (task.id === updatedTask.id ? updatedTask : task))
+      );
+      toast.success("Task updated successfully");
+    } catch (error) {
+      toast.error("Failed to update task");
+    }
+  };
+
+  const handleDragEnd = async (event: any) => {
+    setActiveId(null);
+    const { active, over } = event;
+
+    if (active.id !== over.id) {
+      setTasks((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+
+        const newItems = arrayMove(items, oldIndex, newIndex);
+        const orderedItems = newItems.map((item, index) => ({
+          ...item,
+          order: index,
+        }));
+
+        // Update task orders in the database
+        orderedItems.forEach(async (task) => {
+          try {
+            await updateTaskService(task.id, { order: task.order });
+          } catch (error) {
+            console.error("Failed to update task order:", error);
+          }
+        });
+
+        return orderedItems;
+      });
+    }
   };
 
   const sensors = useSensors(
@@ -57,27 +127,9 @@ export function Tasks() {
     setActiveId(event.active.id);
   };
 
-  const handleDragEnd = (event: any) => {
-    setActiveId(null);
-    const { active, over } = event;
-
-    if (active.id !== over.id) {
-      setTasks((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
-
-        const newItems = arrayMove(items, oldIndex, newIndex);
-
-        // Add order property to each task based on its position
-        const orderedItems = newItems.map((item, index) => ({
-          ...item,
-          order: index,
-        }));
-
-        return orderedItems;
-      });
-    }
-  };
+  if (isLoading) {
+    return <div className="flex justify-center items-center h-64">Loading tasks...</div>;
+  }
 
   return (
     <div className="flex gap-4 flex-col">
@@ -90,18 +142,16 @@ export function Tasks() {
           <TabsList>
             <TabsTrigger value="list" className="flex items-center gap-2">
               <List className="h-4 w-4" />
-              {/* <span>List</span> */}
+              <span>List</span>
             </TabsTrigger>
             <TabsTrigger value="grid" className="flex items-center gap-2">
               <Grid className="h-4 w-4" />
-              {/* <span>Grid</span> */}
+              <span>Grid</span>
             </TabsTrigger>
           </TabsList>
         </Tabs>
 
-        <div className="md:hidden">
-          <AddTaskDrawerDialog />
-        </div>
+        
       </div>
 
       <DndContext

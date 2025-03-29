@@ -6,152 +6,142 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { SubtaskList } from "./subtask-list";
-import type { Task, SubTask } from "@/types/task";
-import { Loader2 } from "lucide-react";
+import type { Task } from "@/types/task";
 import { toast } from "sonner";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import { useAuth } from "@/providers/auth-context";
+import { createTask } from "@/services/taskService";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 
-interface TaskFormProps {
+const taskSchema = z.object({
+  title: z.string().min(1, "Task title is required"),
+  date: z.date(),
+  completed: z.boolean().default(false),
+  subtasks: z.array(z.object({
+    id: z.string(),
+    text: z.string(),
+    completed: z.boolean()
+  })).default([]),
+});
+
+type TaskFormData = z.infer<typeof taskSchema>;
+
+interface TaskFormProps extends React.ComponentProps<"div"> {
   className?: string;
-  onSubmit?: (task: Task) => void;
-  isLoading?: boolean;
+  onSuccess?: () => void;
 }
 
-export function TaskForm({ className, onSubmit }: TaskFormProps) {
-  const [task, setTask] = React.useState<Omit<Task, "id">>({
-    title: "",
-    date: new Date(),
-    subtasks: [],
-    completed: false,
+export function TaskForm({  onSuccess }: TaskFormProps) {
+  const { user } = useAuth();
+  const isOnline = useOnlineStatus();
+  const [isLoading, setIsLoading] = React.useState(false);
+
+  const form = useForm<TaskFormData>({
+    resolver: zodResolver(taskSchema),
+    defaultValues: {
+      title: "",
+      date: new Date(),
+      completed: false,
+      subtasks: [],
+    }
   });
 
-  const [isExpanded, setIsExpanded] = React.useState(false);
-
-  const handleTaskChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setTask({ ...task, [e.target.name]: e.target.value });
-  };
+  const subtasks = form.watch("subtasks");
 
   const addSubtask = () => {
-    setTask((prevTask) => ({
-      ...prevTask,
-      subtasks: [
-        ...prevTask.subtasks,
-        { id: nanoid(), text: "", completed: false },
-      ],
-    }));
+    const currentSubtasks = form.getValues("subtasks") || [];
+    form.setValue("subtasks", [
+      ...currentSubtasks, 
+      { id: nanoid(), text: "", completed: false }
+    ], { shouldValidate: true });
   };
 
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-
-  const isOnline = useOnlineStatus();
-
-  // const handleSubmit = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   setError(null);
-  //   setIsLoading(true);
-
-  //   // Check online status immediately
-
-  //     // Store task in local storage or IndexedDB here
-  //     setIsLoading(false);
-  //     onSubmit?.(task); // This will trigger modal close
-  //     return;
-  //   }
-
-  //   try {
-  //     await onSubmit?.(task);
-  //     setTask({ name: "", date: "", subtasks: [], status: "pending" });
-  //     toast.success("Task created successfully!");
-  //   } catch (err) {
-  //     setError("Failed to create task. Please try again.");
-  //     toast.error("Failed to create task");
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
-
-  // const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-  //   event.preventDefault();
-  //   if (onSubmit) {
-  //     // Create your task object here and pass it to onSubmit
-  //     const task: Task = {
-  //       // Add your task properties here
-  //     };
-  //     onSubmit(task);
-  //   }
-  // };
+  const onSubmit = async (data: TaskFormData) => {
+    if (!user) return;
+    
+    setIsLoading(true);
+    try {
+      await createTask(user.uid, data);
+      toast.success("Task created successfully!");
+      form.reset();
+      onSuccess?.();
+    } catch (error) {
+      toast.error(!isOnline 
+        ? "You're offline. Task will sync when you're back online." 
+        : "Failed to create task"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
-    <form onSubmit={() => {}} className={className}>
-      {error && (
-        <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-          {error}
-        </div>
-      )}
-
+    <div className={cn("grid items-start gap-4 overflow-hidden h-full w-full")}>
       {!isOnline && (
         <div className="text-sm text-yellow-600 dark:text-yellow-500 bg-yellow-50 dark:bg-yellow-900/10 p-3 rounded-md">
           You're offline. Tasks will be synced when you're back online.
         </div>
       )}
 
-      <div className="h-full overflow-hidden flex flex-col gap-4">
-        <div className="flex-1 h-full w-full overflow-hidden overflow-y-auto pr-2">
-          <div className="flex flex-col gap-4 ">
-            <div className="grid gap-2">
-              <Label htmlFor="task-name">Task name</Label>
-              <Input
-                type="text"
-                id="task-name"
-                name="name"
-                value={task.title}
-                onChange={handleTaskChange}
-                placeholder="Task name"
-                onClick={() => !isExpanded && setIsExpanded(true)}
-              />
-            </div>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <FormField
+            control={form.control}
+            name="title"
+            render={({ field }) => (
+              <FormItem>
+                <Label>Task title</Label>
+                <FormControl>
+                  <Input placeholder="Enter task title" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-            <SubtaskList
-              subtasks={task.subtasks}
-              onChange={(newSubtasks) =>
-                setTask((prev) => ({ ...prev, subtasks: newSubtasks }))
-              }
-            />
+          <SubtaskList
+            subtasks={subtasks || []}
+            onChange={(newSubtasks) => form.setValue("subtasks", newSubtasks, { shouldValidate: true })}
+          />
 
-            <Button
-              onClick={addSubtask}
-              variant={"link"}
-              type="button"
-              className="w-max cursor-pointer select-none"
-            >
-              <Plus className="size-4" />
-              Add Subtask
-            </Button>
-          </div>
-
-          {isExpanded && (
-            <div className="grid gap-2">
-              <Label htmlFor="dateAndTime">Date and Time</Label>
-              <Input
-                id="dateAndTime"
-                name="date"
-                type="datetime-local"
-                value={task.date}
-                onChange={handleTaskChange}
-                placeholder="Date and Time"
-              />
-            </div>
-          )}
-        </div>
-
-        <div className="shrink-0 justify-end flex ">
           <Button
-            type="submit"
-            disabled={isLoading || (!isOnline && !task.title)}
+            onClick={(e) => {
+              e.preventDefault();
+              addSubtask();
+            }}
+            variant="link"
+            type="button"
+            className="w-max"
           >
+            <Plus className="size-4" />
+            Add Subtask
+          </Button>
+
+          <FormField
+            control={form.control}
+            name="date"
+            render={({ field }) => (
+              <FormItem>
+                <Label>Date</Label>
+                <FormControl>
+                  <Input 
+                    type="datetime-local" 
+                    {...field} 
+                    value={field.value ? field.value.toISOString().slice(0, 16) : ''}
+                    onChange={(e) => field.onChange(new Date(e.target.value))}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <Button type="submit" disabled={isLoading} className="w-full">
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -161,8 +151,8 @@ export function TaskForm({ className, onSubmit }: TaskFormProps) {
               "Add Task"
             )}
           </Button>
-        </div>
-      </div>
-    </form>
+        </form>
+      </Form>
+    </div>
   );
 }

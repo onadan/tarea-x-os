@@ -4,20 +4,17 @@ import { Loader2 } from "lucide-react";
 import { useAuth } from "@/providers/auth-context";
 import { toast } from "sonner";
 
-interface Props {
-  loading: boolean;
-  setLoading: (loading: boolean) => void;
-}
-
-export default function SignInWithGoogleButton({ loading, setLoading }: Props) {
+export default function SignInWithGoogleButton() {
   const { signInWithPopUp } = useAuth();
+
+  const [loading, setLoading] = React.useState(false);
 
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
       await signInWithPopUp();
     } catch (_error) {
-      toast.error("Error signing in");
+      toast.error("Error signing in with Google");
     } finally {
       setLoading(false);
     }

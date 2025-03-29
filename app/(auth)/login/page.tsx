@@ -23,14 +23,17 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import SignInWithGoogleButton from "@/components/auth/sign-in-with-google-button";
+import { loginWithEmailAndPassword } from "@/services/authService";
+import { toast } from "sonner";
+import { set } from "date-fns";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 // import { loginWithEmailAndPassword } from "@/firebase/authService";
 
 export default function Page() {
   //   const { user, signInWithPopUp } = useAuth();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);  
 
   const formSchema = z.object({
     email: z.string().min(1, "Required").email(),
@@ -45,8 +48,26 @@ export default function Page() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    const { email, password } = values;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await loginWithEmailAndPassword(email, password);
+
+      if (response) {
+        toast.success("Login successful");
+        router.push("/");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to login. Please try again.");
+      setError(error.message || "Failed to login. Please try again.");
+      
+    } finally { 
+      setIsLoading(false);
+    }
   }
   return (
     <div className="min-h-screen flex items-center justify-center p-4 py-10">
@@ -67,6 +88,13 @@ export default function Page() {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+
+          {error && (
+              <Alert variant="destructive" className="mb-4 bg-red-500/10 border-none">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
             <FormField
               control={form.control}
               name="email"
@@ -129,7 +157,7 @@ export default function Page() {
           <Separator className="flex-1" />
         </div>
 
-        <SignInWithGoogleButton loading={isLoading} setLoading={setIsLoading} />
+        <SignInWithGoogleButton />
 
         <p className="text-center text-sm text-neutral-500 dark:text-foreground ">
           Already have an account?{" "}
